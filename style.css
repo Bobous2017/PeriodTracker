@@ -36,6 +36,7 @@
     color: #00ffff;
     font-size: 1.2em;
     cursor: pointer;
+    border: solid 1px aliceblue;
     transition: all 0.3s ease;
   }
 
@@ -50,6 +51,7 @@
     background: #00ffff;
     color: #000;
     box-shadow: 0 0 30px #00ffff, 0 0 60px #00ffff;
+    border: none;
   }
 .blurred {
   filter: blur(4px);
@@ -190,4 +192,5 @@
     table { font-size: 0.85em; }
     .action-btn { padding: 4px 8px; font-size: 1.25em; }
   }
+
 
