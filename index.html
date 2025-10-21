@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Period Tracker</title>
+<link rel="stylesheet" href="style.css">
+<style>
+</style>
+</head>
+<body>
+  <h1>🌸 Period Tracker 🌸</h1>
+  <div class="btn-container">
+    <button id="startBtn">Start</button>
+    <button id="stopBtn">Stop</button>
+  </div>
+
+  <table id="periodTable">
+    <thead>
+      <tr>
+        <th>Start Date</th>
+        <th>End Date</th>
+        <th>Duration (days)</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <div class="footer">Made with ❤️ for health & self-care</div>
+
+  <!-- 🌸 EDIT MODAL -->
+  <div id="editModal" class="modal-overlay">
+    <div class="modal">
+      <h3>Edit Period</h3>
+      <label>Start Date:</label>
+      <input type="datetime-local" id="editStart">
+      <label>End Date:</label>
+      <input type="datetime-local" id="editEnd">
+      <div class="modal-buttons">
+        <button class="confirm-btn" id="saveEdit">Save</button>
+        <button class="cancel-btn" id="cancelEdit">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🔴 DELETE CONFIRMATION -->
+  <div id="deleteModal" class="modal-overlay">
+    <div class="modal">
+      <h3>Delete Record?</h3>
+      <p>This action cannot be undone.</p>
+      <div class="modal-buttons">
+        <button class="confirm-btn" id="confirmDelete">Yes, Delete</button>
+        <button class="cancel-btn" id="cancelDelete">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const startBtn = document.getElementById("startBtn");
+  const stopBtn = document.getElementById("stopBtn");
+  const tableBody = document.querySelector("#periodTable tbody");
+  const editModal = document.getElementById("editModal");
+  const deleteModal = document.getElementById("deleteModal");
+
+  const editStartInput = document.getElementById("editStart");
+  const editEndInput = document.getElementById("editEnd");
+  let editIndex = null;
+  let deleteIndex = null;
+
+  let periods = JSON.parse(localStorage.getItem("periods")) || [];
+  let currentPeriod = JSON.parse(localStorage.getItem("currentPeriod")) || null;
+
+  function saveData() {
+    localStorage.setItem("periods", JSON.stringify(periods));
+    localStorage.setItem("currentPeriod", JSON.stringify(currentPeriod));
+  }
+
+  function updateTable() {
+    tableBody.innerHTML = "";
+    periods.forEach((p, index) => {
+      const row = document.createElement("tr");
+      const duration = p.endDate ? 
+        Math.max(1, Math.ceil((new Date(p.endDate) - new Date(p.startDate)) / (1000 * 60 * 60 * 24))) + " days" : "-";
+
+      row.innerHTML = `
+       <td>${formatDisplayDate(p.startDate)}</td>
+       <td>${p.endDate ? formatDisplayDate(p.endDate) : "-"}</td>
+        <td>${duration}</td>
+        <td>
+          <button class="action-btn edit-btn" onclick="openEdit(${index})">Edit</button>
+          <button class="action-btn delete-btn" onclick="openDelete(${index})">Delete</button>
+        </td>`;
+      tableBody.appendChild(row);
+    });
+  }
+function formatDisplayDate(isoString) {
+  const d = new Date(isoString);
+  return d.toLocaleString(undefined, {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  });
+}
+
+function updateButtonState() {
+  if (currentPeriod && !currentPeriod.endDate) {
+    // Period started but not stopped yet
+    startBtn.classList.add("glow");
+    stopBtn.classList.remove("glow");
+    startBtn.disabled = true;
+    stopBtn.disabled = false;
+  } else {
+    // Period stopped or none active
+    startBtn.classList.remove("glow");
+    stopBtn.classList.remove("glow");
+    startBtn.disabled = false;
+    stopBtn.disabled = false;
+  }
+}
+
+
+
+  startBtn.addEventListener("click", () => {
+    if (currentPeriod && !currentPeriod.endDate) {
+      alert("You already started a period. Click Stop to finish it first.");
+      return;
+    }
+    const now = new Date().toISOString();
+
+    currentPeriod = { startDate: now, endDate: null };
+    periods.push(currentPeriod);
+    saveData();
+    updateTable();
+    updateButtonState();
+  });
+
+    stopBtn.addEventListener("click", () => {
+    if (!currentPeriod || currentPeriod.endDate) {
+        alert("No active period to stop.");
+        return;
+    }
+    const now = new Date().toISOString();
+    currentPeriod.endDate = now;
+
+    // Flash Stop glow briefly for feedback
+    stopBtn.classList.add("glow");
+    setTimeout(() => stopBtn.classList.remove("glow"), 800);
+
+    saveData();
+    updateTable();
+    updateButtonState();
+    });
+
+
+  // 🌸 Open Edit Modal
+  window.openEdit = function(index) {
+    editIndex = index;
+    const p = periods[index];
+    document.querySelector("main-content")?.classList.add("blurred");
+    document.querySelector(".btn-container")?.classList.add("blurred");
+    editModal.style.display = "flex";
+
+    editStartInput.value = p.startDate ? formatForInput(p.startDate) : "";
+    editEndInput.value = p.endDate ? formatForInput(p.endDate) : "";
+  };
+
+  // 🗑️ Open Delete Confirmation
+  window.openDelete = function(index) {
+    deleteIndex = index;
+    document.querySelector(".btn-container")?.classList.add("blurred");
+    document.querySelector("table")?.classList.add("blurred");
+    deleteModal.style.display = "flex";
+  };
+
+  // 🌸 Save Edit
+  document.getElementById("saveEdit").addEventListener("click", () => {
+    if (editIndex === null) return;
+    const startVal = editStartInput.value;
+    const endVal = editEndInput.value;
+
+    if (startVal) periods[editIndex].startDate = new Date(startVal).toISOString();
+    if (endVal) periods[editIndex].endDate = new Date(endVal).toISOString();
+
+    else periods[editIndex].endDate = null;
+
+    saveData();
+    updateTable();
+    closeModal(editModal);
+  });
+
+  // 🔴 Confirm Delete
+  document.getElementById("confirmDelete").addEventListener("click", () => {
+    if (deleteIndex === null) return;
+    periods.splice(deleteIndex, 1);
+    saveData();
+    updateTable();
+    closeModal(deleteModal);
+  });
+
+  // Cancel Buttons
+  document.getElementById("cancelEdit").addEventListener("click", () => closeModal(editModal));
+  document.getElementById("cancelDelete").addEventListener("click", () => closeModal(deleteModal));
+
+  function closeModal(modal) {
+    modal.style.display = "none";
+    document.querySelectorAll(".blurred").forEach(e => e.classList.remove("blurred"));
+    editIndex = deleteIndex = null;
+  }
+
+  function formatForInput(dateStr) {
+    const d = new Date(dateStr);
+    const iso = d.toISOString();
+    return iso.slice(0, 16);
+  }
+
+  updateTable();
+  updateButtonState();
+</script>
+</body>
+</html>
